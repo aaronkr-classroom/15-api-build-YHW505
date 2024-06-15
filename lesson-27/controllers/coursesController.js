@@ -15,22 +15,82 @@ module.exports = {
    * Listing 27.2 (p. 393)
    * @TODO: coursesController.js에서 강좌를 위한 JSON 응답 추가
    */
-  respondJSON: () => {},
+  respondJSON: (req, res) => {
+    res.json({
+      status : httpStatus.OK,
+      data : res.locals
+    });
+  },
 
   // JSON 포맷으로 500 상태 코드와 에러 메시지 응답
-  errorJSON: () => {},
+  errorJSON: (error, req, res, next) => {
+    let errorObject;
+    if (error) {
+      errorObject = {
+        status : httpStatus.INTERNAL_SERVER_ERROR,
+        message : error.message,
+      };
+    } else {
+      errorObject = {
+        status : httpStatus.INTERNAL_SERVER_ERROR,
+        message : "Unknown Error."
+      };
+    }
+    res.json(errorObject)
+  },
 
   /**
    * Listing 27.6 (p. 399-400)
    * @TODO: courseController.js에서 강좌 참여 액션의 생성
    */
-  join: () => {},
+  join: (req, res, next) => {
+    let courseId = req.params.id,
+    currentUser = req.user;
+
+    if (currentUser) {
+      User.findByIdAndUpdate(currentUser, {
+        $addToSet : {
+          courses : courseId
+        },
+      })
+      .then(() => {
+        res.locals.success = true;
+        next();
+      })
+      .catch((error) => {
+        next(error);
+      });
+    } else {
+      console.log("Join Action : User must log in.");
+      next(new Error("User must log in."));
+    }
+  },
 
   /**
    * Listing 27.7 (p. 401)
    * @TODO: courseController.js에서 강좌 필터에 액션 추가
    */
-  filterUserCourses: () => {},
+  filterUserCourses: (req, res, next) => {
+    let currentUser = req.user;
+
+    if (currentUser) {
+      let mappedCourses = res.locals.courses.map(course => {
+        let userJoined = currentUser.courses.some(userCourse => {
+          return userCourse.equals(course._id)
+        });
+
+        return Object.assign(course.toObject(), {joined : userJoined});
+      });
+
+      res.locals.courses = mappedCourses;
+
+      next();
+    } else {
+      console.log("Filter Courses : User must log in.");
+      next();
+    }
+  },
+
 
   index: (req, res, next) => {
     Course.find() // index 액션에서만 퀴리 실행
@@ -51,7 +111,7 @@ module.exports = {
      * @TODO: userController.js에서 쿼리 매개변수가 존재할 때 JSON으로 응답하기
      */
     if (req.query.format === "json") {
-      res.json(res.locals.users);
+      res.json(res.locals.courses);
     } else {
       res.render("courses/index", {
         page: "courses",

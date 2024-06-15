@@ -8,6 +8,11 @@
 const mongoose = require("mongoose"),
   courseSchema = mongoose.Schema(
     {
+      // _id : {
+      //   type : String,
+      //   required : true,
+      //   unique : true
+      // },
       title: {
         // 강좌 스키마에 속성 추가
         type: String,
