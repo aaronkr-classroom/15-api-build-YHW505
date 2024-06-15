@@ -112,7 +112,7 @@ module.exports = {
      * @TODO: userController.js에서 쿼리 매개변수가 존재할 때 JSON으로 응답하기
      */
     if (req.query.format === "json") {
-      res.json(res.locals.users);
+      res.json(res.locals.courses);
     } else {
       res.render("courses/index", {
         page: "courses",

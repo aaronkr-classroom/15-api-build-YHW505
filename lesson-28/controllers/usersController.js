@@ -36,19 +36,91 @@ module.exports = {
    * Listing 28.1, 3 (p. 407, 410)
    * usersController.js에서 API 토큰의 검증을 위한 미들웨어 함수의 추가
    */
-  verifyToken: () => {},
+  verifyToken: (req, res, next) => {
+    let token = req.query.apiToken;
+    console.log("Verifying : ", apiToken); //nodeToken
+
+    if (token) {
+      User.findOne({apiToken : token})
+        .then(user => {
+          if (user) next();
+          else next(new Error("invalid API token"));
+        }).catch(error => {
+          next(new Error(error.message));
+        });
+    } else {
+      next(new Error("No API Token!"));
+    }
+  },
 
   /**
    * Listing 28.4 (p. 413)
    * @TODO: usersController.js에서 API를 위한 로그인 액션 생성
    */
-  apiAuthenticate: () => {},
+  apiAuthenticate: (req, res, next) => {
+    passport.authenticate("local", (errors, user) => {
+      if (user) {
+        console.log("User found!");
+        let signedToken = jsonWebToken.sign(
+          {
+            data : user._id,
+            exp : new Date().setDate(new Date().getDate() + 1)
+          },
+          "secret_encoding_passphrase"
+        );
+
+        res.json({
+          success : true,
+          message : "Success authenticate user!"
+        });
+      } else {
+        console.log("No User Found");
+        res.json({
+          success : false,
+          message : "Could not authenticate user!"
+        });
+      }
+    })(req,res, next);
+  },
 
   /**
    * Listing 28.6 (p. 414-415)
    * userController.js에서 API를 위한 유효성 체크 액션 생성
    */
-  verifyJWT: () => {},
+  verifyJWT: (req, res, next) => {
+    let token = req.headers.token;
+    console.log(req.headers);
+
+    if (token) {
+      jsonWebToken.verify(
+        token,
+        "secret_encoding_passphrase",
+        (errors, payload) => {
+          if (payload) {
+            User.findById(payload.data._id).then(user => {
+              if (user) next();
+              else 
+                res.status(httpStatus.FORBIDDEN).json({
+                  error : true,
+                  message : "NO User Account Found!"
+              });
+            });
+          } else {
+            res.status(httpStatus.UNAUTHORIZED).json({
+              error : true,
+              message : "Cannot Verify API token!"
+            });
+          }
+          next();
+        }
+      );
+    } else {
+      res.status(httpStatus.UNAUTHORIZED).json({
+        error : true,
+        message : "Provide Token!"
+      });
+    }
+  },
 
   /**
    * Listing 23.3 (p. 336)
